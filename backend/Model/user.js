@@ -46,6 +46,16 @@ const UserSchema=mongoose.Schema({
 
     }],
     messages:[MessageSchema],
+    currentlyListening: {
+        songId: {
+            type: String,
+            default: null,
+        },
+        timestamp: {
+            type: Date,
+            default: null,
+        },
+    },
     date:{
         type:Date,
         default: Date.now,

@@ -24,12 +24,35 @@ mongoose.connect(process.env.MONGO_URI,{useNewUrlParser:true,useUnifiedTopology:
 .then(()=>console.log('Mongo DB connected'))
 .catch((err)=>console.log(err));
 
-io.on('connection',(socket)=>{
-    console.log('New Client Connected');
-    socket.on('disconnected',()=>{
+io.on('connection', (socket) => {
+    console.log('New client connected');
+
+    // Handle joining a room for listening together
+    socket.on('joinRoom', ({ roomId }) => {
+        socket.join(roomId);
+        console.log(`User joined room: ${roomId}`);
+    });
+
+    // Handle play song
+    socket.on('playSong', ({ roomId, songId, timestamp }) => {
+        io.to(roomId).emit('playSong', { songId, timestamp });
+    });
+
+    // Handle pause song
+    socket.on('pauseSong', ({ roomId }) => {
+        io.to(roomId).emit('pauseSong');
+    });
+
+    // Handle seek song
+    socket.on('seekSong', ({ roomId, timestamp }) => {
+        io.to(roomId).emit('seekSong', { timestamp });
+    });
+
+    socket.on('disconnect', () => {
         console.log('Client disconnected');
     });
 });
+
 const PORT=process.env.PORT||5000;
 server.listen(PORT,()=>{
     console.log(`server is running on port ${PORT}`)
