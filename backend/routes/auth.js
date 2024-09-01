@@ -1,13 +1,14 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { upload } = require('../config/cloudinary');
-const User = require('../models/User');
-const auth = require('../middleware/auth');
+const { upload } = require('../Config/cloudinary.js');
+const User = require('../Model/user.js');
+const auth = require('../middleware/auth.js');
 const router = express.Router();
 
 // Register a new user
 router.post('/register', async (req, res) => {
+    
     const { username, email, password } = req.body;
 
     try {
@@ -45,17 +46,19 @@ router.post('/register', async (req, res) => {
 
 // Login user
 router.post('/login', async (req, res) => {
+    // console.log('hiii');
     const { email, password } = req.body;
-
+    
     try {
         let user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
+            return res.status(400).json({ msg: 'Invalid email' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
+        console.log(isMatch);
         if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
+            return res.status(400).json({ msg: 'Invalid password' });
         }
 
         const payload = {
