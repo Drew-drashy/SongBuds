@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { upload } = require('../Config/cloudinary.js');
 const User = require('../Model/user.js');
@@ -16,16 +16,11 @@ router.post('/register', async (req, res) => {
         if (user) {
             return res.status(400).json({ msg: 'User already exists' });
         }
-
         user = new User({
             username,
             email,
             password,
         });
-
-        // Hash the password before saving
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(password, salt);
         await user.save();
 
         const payload = {
@@ -54,9 +49,13 @@ router.post('/login', async (req, res) => {
         if (!user) {
             return res.status(400).json({ msg: 'Invalid email' });
         }
-
+        // const salt = await bcrypt.genSalt(10);
+        // user.password = await bcrypt.hash(password, salt);
+        // console.log(email);
+        // console.log(password);
+        // console.log(user.password);
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log(isMatch);
+        // console.log(isMatch);
         if (!isMatch) {
             return res.status(400).json({ msg: 'Invalid password' });
         }
@@ -80,21 +79,36 @@ router.post('/login', async (req, res) => {
 // Upload avatar
 router.post('/avatar', [auth, upload.single('avatar')], async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        // Log the incoming request
+        console.log('Received a request to upload an avatar');
+        console.log('Request user ID:', req.user.id);
+        console.log('Uploaded file information:', req.file);
 
+        // Verify if auth middleware worked and user is found
+        const user = await User.findById(req.user.id);
         if (!user) {
+            console.log('User not found');
             return res.status(404).json({ msg: 'User not found' });
         }
 
-        user.avatar = req.file.path;  // Cloudinary URL
+        // Verify if the file was correctly uploaded by multer/cloudinary
+        if (!req.file) {
+            console.log('No file uploaded');
+            return res.status(400).json({ msg: 'No file uploaded' });
+        }
+
+        // Update user's avatar URL with Cloudinary path
+        user.avatar = req.file.path;  // Ensure this path is correct
         await user.save();
 
+        console.log('Avatar updated successfully');
         res.json({ avatar: user.avatar });
     } catch (err) {
-        console.error(err.message);
+        console.error('Server error:', err.message);
         res.status(500).send('Server error');
     }
 });
+
 
 // Add a friend
 router.post('/add-friend', auth, async (req, res) => {
@@ -151,7 +165,9 @@ router.get('/messages/:friendId', auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         const friendId = req.params.friendId;
-
+        console.log(user.id);
+        console.log(friendId);
+        // friendId=friendId.split(':');
         if (!user.friends.includes(friendId)) {
             return res.status(403).json({ msg: 'Not authorized' });
         }
