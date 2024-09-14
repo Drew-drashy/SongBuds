@@ -5,8 +5,113 @@ const { upload } = require('../Config/cloudinary.js');
 const User = require('../Model/user.js');
 const auth = require('../middleware/auth.js');
 const router = express.Router();
+const querystring = require('querystring');  // This is the deprecated part
+const client_id = process.env.SPOTIFY_CLIENT_ID;
+const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
+const redirect_uri = 'http://localhost:5000/api/auth/callback';
+const axios=require('axios')
 
-// Register a new user
+router.get('/spotify/login', function(req, res) {
+  var state = generateRandomString(16);
+  var scope = 'user-read-private user-read-email';
+
+  res.redirect('https://accounts.spotify.com/authorize?' +
+    querystring.stringify({
+      response_type: 'code',
+      client_id: client_id,
+      scope: scope,
+      redirect_uri: redirect_uri,
+      state: state
+    }));
+});
+
+router.get('/callback', async function(req, res) {
+  var code = req.query.code || null;
+  var state = req.query.state || null;
+
+  if (state === null) {
+    res.redirect('/#' +
+      querystring.stringify({
+        error: 'state_mismatch'
+      }));
+  } else {
+    try {
+      // Exchange code for access token
+      const tokenResponse = await axios({
+        method: 'post',
+        url: 'https://accounts.spotify.com/api/token',
+        params: {
+          code: code,
+          redirect_uri: redirect_uri,
+          grant_type: 'authorization_code'
+        },
+        headers: {
+          'Authorization': 'Basic ' + (Buffer.from(client_id + ':' + client_secret).toString('base64')),
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+
+      const { access_token, refresh_token, expires_in } = tokenResponse.data;
+
+      // Get user profile
+      const userProfileResponse = await axios({
+        method: 'get',
+        url: 'https://api.spotify.com/v1/me',
+        headers: {
+          'Authorization': 'Bearer ' + access_token
+        }
+      });
+
+      const { id: spotify_id, email, display_name } = userProfileResponse.data;
+
+      // Check if user exists, if not create a new user
+      let user = await User.findOne({ spotify_id });
+      if (!user) {
+        user = new User({
+          spotify_id,
+          email,
+          username: display_name,
+          // Add any other fields you want to store
+        });
+      }
+
+      // Update tokens
+      user.spotifyAccessToken = access_token;
+      user.spotifyRefreshToken = refresh_token;
+      user.spotifyTokenExpires = new Date(Date.now() + expires_in * 1000);
+
+      await user.save();
+
+      // Create a session or JWT token for your app
+      const token = createToken(user); // Implement this function to create a JWT
+
+      // Redirect to your frontend with the token
+      res.redirect(`http://localhost:3000/dashboard?token=${token}`);
+    } catch (error) {
+      console.error('Error in Spotify auth callback:', error);
+      res.redirect('/#' +
+        querystring.stringify({
+          error: 'invalid_token'
+        }));
+    }
+  }
+});
+
+function generateRandomString(length) {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
+// Implement this function to create a JWT token for your app
+function createToken(user) {
+  // Use a library like jsonwebtoken to create a token
+//    return jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    return jwt.sign({id:user._id},process.env.JWT_SECRET,{expiresIn:'1h'})
+}
 router.post('/register', async (req, res) => {
     
     const { username, email, password } = req.body;

@@ -69,13 +69,12 @@ function Login() {
 
     // Spotify OAuth credentials
     const clientId = import.meta.env.YOUR_SPOTIFY_CLIENT_ID; // Replace with your Spotify client ID
-    const redirectUri = 'http://localhost:3000/callback'; // Your redirect URI
+    // {console.log(process.env.YOUR_SPOTIFY_CLIENT_ID)}
+    const redirectUri = 'http://localhost:3000/callback'; 
     const spotifyScopes = 'user-read-private user-read-email streaming user-library-read user-modify-playback-state';
- // Scopes for Spotify access
-
-    // Function to handle Spotify OAuth login
     const handleSpotifyLogin = () => {
-        const authUrl = `https://accounts.spotify.com/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(spotifyScopes)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        console.log('hi')
+        const authUrl = `http://localhost:5000/api/auth/spotify/login`;
         window.location.href = authUrl; // Redirect the user to Spotify for authentication
     };
 
