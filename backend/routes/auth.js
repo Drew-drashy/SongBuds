@@ -8,7 +8,7 @@ const router = express.Router();
 const querystring = require('querystring');  // This is the deprecated part
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = 'http://localhost:5000/api/auth/callback';
+const redirect_uri = process.env.SPOTIFY_REDIRECT_URI;
 const axios=require('axios')
 
 router.get('/spotify/login', function(req, res) {
@@ -77,6 +77,7 @@ router.get('/callback', async function(req, res) {
 
       // Update tokens
       user.spotifyAccessToken = access_token;
+      
       user.spotifyRefreshToken = refresh_token;
       user.spotifyTokenExpires = new Date(Date.now() + expires_in * 1000);
 
