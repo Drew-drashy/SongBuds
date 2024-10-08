@@ -1,47 +1,28 @@
-// const jwt=require('jsonwebtoken');
-
-// module.exports=function(req,res,next){
-//     const token=req.header('x-auth-token');
-//     if(!token){
-//         return res.status(401).json({msg:'No token, Auth denied!'});
-
-//     }
-//     try{
-//         const decoded=jwt.verify(token,process.JWT_SECRET);
-//         req.user=decoded.user;
-//         next();
-//     }
-//     catch(err){
-//         res.status(401).json({msg:"Token is not valid"});
-//     }
-// }
 const jwt = require('jsonwebtoken');
+const User = require('../Model/user');
 
-module.exports = function(req, res, next) {
-    // Get the token from the Authorization header
+module.exports = async function(req, res, next) {
     const authHeader = req.header('Authorization');
     
-    // Check if there is no Authorization header or if it doesn't start with "Bearer"
-    // console.log(authHeader,'authheader');                                                                                                               
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ msg: 'No token, Authorization denied!' });
     }
 
-    // Extract the token from the "Bearer" scheme
     const token = authHeader.split(' ')[1];
-    // console.log(token);
     if (!token) {
         return res.status(401).json({ msg: 'No token, Authorization denied!' });
     }
 
     try {
-        // Verify the token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Find user by ID from the decoded token
+        const user = await User.findById(decoded.id);
 
-        // Attach the user from the token to the request object
-        req.user = decoded.user;
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
 
-        // Proceed to the next middleware or route handler
+        req.user = user; // Set the user document on req.user
         next();
     } catch (err) {
         res.status(401).json({ msg: 'Token is not valid' });

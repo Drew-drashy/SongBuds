@@ -14,15 +14,17 @@ function Room() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
-  const [volume, setVolume] = useState(0.5);
-  const [trackUri, setTrackUri] = useState('spotify:track:6rqhFgbbKwnb9MLmUQDhG6');
+  const [trackUri, setTrackUri] = useState('spotify:track:11dFghVXANMlKmJXsNCbNl'); // Set this for testing
 
   useEffect(() => {
-    const token = localStorage.getItem('spotify_token');
-    
+    const token = localStorage.getItem('token');
+    const spotify_token = localStorage.getItem('spotify_token');
+
     // Fetch user profile
     axios.get('http://localhost:5000/api/auth/profile', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }).then((response) => {
       setUser(response.data);
     }).catch((error) => {
@@ -44,12 +46,12 @@ function Room() {
       playSpotifySong(songUri);
     });
 
-    // Initialize Spotify Player SDK when ready
+    // Initialize Spotify Player SDK when it's ready
     window.onSpotifyWebPlaybackSDKReady = () => {
       const spotifyPlayer = new window.Spotify.Player({
-        name: 'Collaborative Player',
-        getOAuthToken: cb => { cb(token); },
-        volume: volume,
+        name: 'Group Listening Room',
+        getOAuthToken: cb => { cb(spotify_token); },
+        volume: 0.5,
       });
 
       spotifyPlayer.addListener('ready', ({ device_id }) => {
@@ -74,16 +76,28 @@ function Room() {
         player.disconnect();
       }
     };
-  }, [roomId, volume]);
+  }, [roomId]);
 
-  // Play song using Spotify SDK
+  const sendMessage = () => {
+    if (message.trim() !== '') {
+      socket.emit('sendMessage', { roomId, message, user });
+      setMessages((prevMessages) => [...prevMessages, { user, message }]);
+      setMessage('');
+    }
+  };
+
   const playSpotifySong = (spotifyUri) => {
     if (player && deviceId) {
+      console.log('Attempting to play Spotify URI:', spotifyUri);
       axios({
         method: 'PUT',
         url: `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
-        headers: { Authorization: `Bearer ${localStorage.getItem('spotify_token')}` },
-        data: { uris: [spotifyUri] },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('spotify_token')}`,
+        },
+        data: {
+          uris: [spotifyUri],
+        },
       }).then(() => {
         console.log('Playing song:', spotifyUri);
       }).catch((error) => {
@@ -91,18 +105,16 @@ function Room() {
       });
     }
   };
+  
 
   const handlePlaySong = () => {
-    socket.emit('playSong', { roomId, songUri: trackUri });
-  };
+    if (trackUri && trackUri.startsWith('spotify:track:')) {
+      console.log('Emitting playSong with URI:', trackUri);
+      socket.emit('playSong', { roomId, songUri: trackUri }); // Correct key should be songUri
+    }
+  };  
 
-  const handleVolumeChange = (e) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (player) player.setVolume(newVolume);
-  };
-
-  const togglePlayPause = () => {
+  const togglePlay = () => {
     if (player) {
       player.togglePlay();
     }
@@ -142,23 +154,21 @@ function Room() {
           {currentTrack && (
             <div>
               <p>Now Playing: {currentTrack.name} by {currentTrack.artists.map(artist => artist.name).join(', ')}</p>
-              <button onClick={togglePlayPause} className="bg-green-500 text-white py-2 px-4 rounded">
+              <button onClick={togglePlay} className="bg-green-500 text-white py-2 px-4 rounded">
                 {isPlaying ? 'Pause' : 'Play'}
               </button>
             </div>
           )}
 
           <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={volume}
-            onChange={handleVolumeChange}
-            className="w-full mt-2"
+            type="text"
+            placeholder="Spotify Track URI (spotify:track:{track_id})"
+            value={trackUri}
+            onChange={(e) => setTrackUri(e.target.value)}
+            className="w-full px-4 py-2 border rounded mb-2"
           />
           <button onClick={handlePlaySong} className="bg-blue-500 text-white py-2 px-4 rounded">
-            Play Selected Song
+            Play a Song in Room
           </button>
         </div>
       </div>

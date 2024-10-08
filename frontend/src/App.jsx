@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import ConnectSpotify from './components/ConnectSpotify';
 
+import Room from './pages/Room'
 
 function App() {
   // const [count, setCount] = useState(0)
@@ -18,6 +19,8 @@ function App() {
         <Route path="/signup" element={<SignUp/>}/>
         <Route path="/dashboard" element={<Dashboard/>}/>
         <Route path="/connect-spotify" element={<ConnectSpotify/>}/>
+        <Route path="/room/:roomId" element={<Room/>}/>
+        <Route path="/home" element={<Home/>}/>
 
       </Routes>
     </Router>

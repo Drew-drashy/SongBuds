@@ -10,6 +10,10 @@ const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
 const redirect_uri = process.env.SPOTIFY_REDIRECT_URI;
 const axios=require('axios')
+const { v4: uuidv4 } = require('uuid'); // For generating room IDs
+const Room =require('../Model/room');
+const ls = require('local-storage');
+const { use } = require('bcrypt/promises.js');
 
 router.get('/spotify/login', function(req, res) {
   var state = generateRandomString(16);
@@ -54,6 +58,9 @@ router.get('/callback', async function(req, res) {
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
       // Get user profile
+      // console.log(access_token,'atoken');
+      // console.log(refresh_token,'rtoken');
+      // console.log(expires_in,'exp');
       const userProfileResponse = await axios({
         method: 'get',
         url: 'https://api.spotify.com/v1/me',
@@ -85,9 +92,13 @@ router.get('/callback', async function(req, res) {
 
       // Create a session or JWT token for your app
       const token = createToken(user); // Implement this function to create a JWT
-
+      // localStorage.setItem('token',token);
+      // ls.set('token',token);
       // Redirect to your frontend with the token
+      // console.log(token,'jwt');
       res.redirect(`http://localhost:3000/dashboard?token=${token}`);
+      // return res.json(user).status(200);
+
     } catch (error) {
       console.error('Error in Spotify auth callback:', error);
       res.redirect('/#' +
@@ -97,6 +108,10 @@ router.get('/callback', async function(req, res) {
     }
   }
 });
+
+// Spotify callback route
+
+
 
 function generateRandomString(length) {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -110,7 +125,7 @@ function generateRandomString(length) {
 // Implement this function to create a JWT token for your app
 function createToken(user) {
   // Use a library like jsonwebtoken to create a token
-//    return jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  // eturn jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     return jwt.sign({id:user._id},process.env.JWT_SECRET,{expiresIn:'1h'})
 }
 router.post('/register', async (req, res) => {
@@ -303,6 +318,77 @@ router.get('/currently-listening/:friendId', auth, async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+// for room id
+ router.post('/create-room',auth,async (req,res)=>{
+    try{
+        const {roomName}=req.body
+        console.log(req.body);
+        // console.log(req.user.id);
+        const roomId=uuidv4();
+        const room= new Room({
+            roomName,
+            roomId,
+            users:[req.user.id]
+        });
+        await room.save();
+        
+        res.json(room)
+    }
+    catch(err){
+        console.log(err.message);
+        res.status(500).send('Server-Error in creating a room');
+    }
+ });
+
+ router.post('/join-room', auth, async (req, res) => {
+    const { roomId } = req.body;
+  
+    try {
+      const room = await Room.findOne({ roomId });
+      if (!room) {
+        return res.status(404).json({ msg: 'Room not found' });
+      }
+  
+      // Add user to the room
+      if (!room.users.includes(req.user.id)) {
+        room.users.push(req.user.id);
+      }
+      
+      await room.save();
+      res.json(room);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  });
+  
+
+  router.get('/profile', auth, async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+        
+       
+        const user = req.user.toObject(); 
+        const userProfile = {
+            username: user.username,
+            email: user.email,
+            spotifyAccessToken: user.spotifyAccessToken
+            // Add other fields as necessary
+        };
+
+        return res.json(userProfile); // Send only the necessary data
+    } catch (err) {
+        console.error('Server Error:', err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+
+
+
 
 
 module.exports = router;
