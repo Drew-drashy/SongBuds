@@ -1,4 +1,4 @@
-# Project Name: **Spotify Collaborative Room**
+# Project Name: **SongBuds**
 
 ## Description
 The Spotify Collaborative Room is a real-time music-sharing and chat application where users can join virtual rooms, search for songs, and listen to music together using the Spotify Web Playback SDK. It integrates messaging and synchronized playback features using **Socket.IO**.
