@@ -28,7 +28,7 @@ The Spotify Collaborative Room is a real-time music-sharing and chat application
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/yourusername/spotify-collab-room.git
+   git@github.com:Drew-drashy/SongBuds.git
    cd spotify-collab-room
    ```
 
